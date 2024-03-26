@@ -1,0 +1,134 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum BooleanStatus {
+  Rejected
+  Approved
+  Pending
+}
+
+model Admin {
+  adminId          String    @id @default(auto()) @map("_id") @db.ObjectId
+  username         String    @unique
+  email            String    @unique
+  password         String
+  emailVerifiedAt  DateTime?
+  emailVerifyToken String?
+  createdAt        DateTime  @default(now())
+}
+
+model Artist {
+  artistId             String    @id @default(auto()) @map("_id") @db.ObjectId
+  profileUrl           String?
+  coverProfileUrl      String?
+  username             String    @unique
+  aboutMe              String?
+  email                String    @unique
+  emailVerified        Boolean   @default(false)
+  emailVerifiedAt      DateTime?
+  emailVerifyToken     String?
+  password             String
+  firstName            String?
+  lastName             String?
+  suffix               String?
+  novels               Novel[]   @relation("ArtistToNovel")
+  verifiedStatus       Boolean   @default(false)
+  totalNovelLikes      Int       @default(0) // Track cumulative likes
+  totalNovelViews      Int       @default(0) // Track cumulative views
+  registration         DateTime  @default(now())
+  lastLogin            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  role                 String    @default("artist")
+  blocked              Boolean   @default(false)
+  passwordResetToken   String?
+  passwordResetExpires DateTime?
+}
+
+model Novel {
+  novelId       String        @id @default(auto()) @map("_id") @db.ObjectId
+  artistId      String        @db.ObjectId
+  volumes       Volume[]      @relation("NovelToVolumes")
+  title         String
+  synopsis      String
+  visibility    Boolean       @default(true)
+  pinyaApproved BooleanStatus @default(Pending)
+  totalViews    Int           @default(0)
+  totalLikes    Int           @default(0)
+  likes         Like[]        @relation("NovelToLikes")
+  Artist        Artist        @relation("ArtistToNovel", fields: [artistId], references: [artistId])
+  thumbnailUrl  String
+  bookmarkedBy  Bookmark[]    @relation("NovelToBookmarks")
+  genre         String[]
+  tags          String[]
+  mainGenre     String?
+  createdAt     DateTime      @default(now())
+  rejected      Boolean       @default(false)
+}
+
+model Volume {
+  volumeId        String        @id @default(auto()) @map("_id") @db.ObjectId
+  novel           Novel         @relation("NovelToVolumes", fields: [novelId], references: [novelId])
+  novelId         String        @db.ObjectId
+  title           String?
+  chapters        Chapter[]     @relation("VolumeToChapters")
+  volumeCompleted Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+  visibility      Boolean       @default(true)
+  volumeNumber    Int           @default(1)
+  rejected        Boolean       @default(false)
+  pinyaApproved   BooleanStatus @default(Approved)
+}
+
+model Chapter {
+  chapterId     String        @id @default(auto()) @map("_id") @db.ObjectId
+  volume        Volume        @relation("VolumeToChapters", fields: [volumeId], references: [volumeId])
+  volumeId      String        @db.ObjectId
+  title         String?
+  content       String?
+  pinyaApproved BooleanStatus @default(Pending)
+  createdAt     DateTime      @default(now())
+  visibility    Boolean       @default(true)
+  chapterNumber Int           @default(1)
+  rejected      Boolean       @default(false)
+}
+
+//reader
+
+model Reader {
+  readerId         String     @id @default(auto()) @map("_id") @db.ObjectId
+  username         String     @unique
+  email            String     @unique
+  password         String
+  emailVerifiedAt  DateTime?
+  emailVerifyToken String?
+  createdAt        DateTime   @default(now())
+  likes            Like[]     @relation("ReaderToLikes")
+  bookmarks        Bookmark[] @relation("ReaderToBookmarks")
+}
+
+model Like {
+  likeId    String   @id @default(auto()) @map("_id") @db.ObjectId
+  createdAt DateTime @default(now())
+  readerId  String   @db.ObjectId
+  reader    Reader   @relation("ReaderToLikes", fields: [readerId], references: [readerId])
+  novelId   String   @db.ObjectId
+  novel     Novel    @relation("NovelToLikes", fields: [novelId], references: [novelId])
+}
+
+model Bookmark {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  createdAt DateTime @default(now())
+  readerId  String   @db.ObjectId
+  reader    Reader   @relation("ReaderToBookmarks", fields: [readerId], references: [readerId])
+  novelId   String   @db.ObjectId
+  novel     Novel    @relation("NovelToBookmarks", fields: [novelId], references: [novelId])
+}
